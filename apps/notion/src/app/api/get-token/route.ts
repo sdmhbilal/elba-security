@@ -69,7 +69,7 @@ export async function POST(request: object) {
       } else if (errorDescription) {
         await prisma.$disconnect();
 
-        return new NextResponse('Invalid code: this code has been revoked.', { status: 500, statusText: 'Invalid code: this code has been revoked.' });
+        return new NextResponse('Invalid code: this code has been revoked.', { status: 500, statusText: 'Invalid Code' });
       }
     }
 
@@ -79,6 +79,6 @@ export async function POST(request: object) {
   } catch (error) {
     await prisma.$disconnect();
 
-    return new NextResponse('Error in Get Token!!!', { status: 500, statusText: 'Error in Get Token!!!' });
+    return new NextResponse('Error in Get Token!!!', { status: 500, statusText: 'Unknown Error' });
   }
 };
