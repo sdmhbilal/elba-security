@@ -3,7 +3,7 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-type Text = {
+type GrantTokenResponseData = {
   access_token: string,
   workspace_id: string,
   error_description?: string
@@ -26,32 +26,28 @@ export async function POST(request: object) {
       SOURCE_BASE_URL: sourceBaseUrl
     } = process.env;
 
-    const encoded = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
-    const myHeaders = new Headers();
-    myHeaders.append('Authorization', `Basic ${encoded}`);
-    myHeaders.append('Content-Type', 'application/json');
-
-    const data = JSON.stringify({
-      'grant_type': 'authorization_code',
-      code,
-      'redirect_uri': redirectUri
-    });
-
-    const requestOptions = {
+    const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+    
+    const res = await fetch(`${sourceBaseUrl}/v1/oauth/token`, {
       method: 'POST',
-      headers: myHeaders,
-      body: data
-    };
+      headers: {
+        Authorization: `Basic ${credentials}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        'grant_type': 'authorization_code',
+        code,
+        'redirect_uri': redirectUri
+      })
+    });
+    const jsonResponse = await res.json() as GrantTokenResponseData;
 
-    const res  = await fetch(`${sourceBaseUrl}/v1/oauth/token`, requestOptions);
-    const text = await res.json() as Text;
-
-    if (Object.keys(text).length) {
+    if (Object.keys(jsonResponse).length) {
       const {
         access_token: accessToken,
         workspace_id: workspaceId,
         error_description: errorDescription
-      } = text;
+      } = jsonResponse;
 
       if (accessToken && workspaceId) {
         await prisma.credential.upsert({

@@ -1,28 +1,15 @@
 'use client';
 
-import axios from 'axios';
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation'
-import toast, { Toaster } from 'react-hot-toast';
-
-type ResponseData = {
-  info: string
-}
-
-type ApiResponse = {
-  data: ResponseData
-}
 
 const getToken = async (authCode: string) => {
-  try {
-    const res: ApiResponse = await axios.post(`${process.env.API_URL}/api/get-token`, {
+  await fetch(`${process.env.API_URL}/api/get-token`, {
+    method: 'POST',
+    body: JSON.stringify({
       code: authCode
-    });
-
-    toast.success(res.data.info);
-  } catch (error) {
-    toast.error(error.response.data);
-  }
+    })
+  });
 };
 
 export default function Home() {
@@ -38,21 +25,16 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    async function fetchData() {
+    async function getTokenHelper() {
       await getToken(authCode)
     };
 
     if (authCode) {
-      fetchData();
+      getTokenHelper();
     }
   }, [authCode]);
 
   return (
-    <main>
-      <div>
-        <Toaster />
-        Come back to Integrating Website
-      </div>
-    </main>
+    <main> Come back to Integrating Website </main>
   )
 };
