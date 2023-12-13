@@ -38,7 +38,7 @@ export const getToken = async (code: string) => {
       throw result.error;
     }
 
-    if (!response.ok || 'error_description' in result.data) {
+    if ('error_description' in result.data) {
       throw new NotionError('Could not retrieve token', {
         response,
         cause: 'error_description' in result.data ? result.data.error_description : undefined,

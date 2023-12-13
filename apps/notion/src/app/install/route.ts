@@ -3,11 +3,7 @@ import { cookies } from 'next/headers';
 import { type NextRequest, NextResponse } from 'next/server';
 import { env } from '@/env';
 
-// Remove the next line if your integration does not works with edge runtime
-export const preferredRegion = env.VERCEL_PREFERRED_REGION;
-// Remove the next line if your integration does not works with edge runtime
 export const runtime = 'edge';
-// export const dynamic = 'force-dynamic';
 
 export function GET(request: NextRequest) {
   const organisationId = request.nextUrl.searchParams.get('organisation_id');
@@ -23,6 +19,7 @@ export function GET(request: NextRequest) {
   redirectUrl.searchParams.append('redirect_uri', env.NOTION_REDIRECT_URL);
   redirectUrl.searchParams.append('state', organisationId);
 
-  cookies().set('organisation_id', organisationId)
+  cookies().set('organisation_id', organisationId);
+
   return NextResponse.redirect(redirectUrl.toString());
 };

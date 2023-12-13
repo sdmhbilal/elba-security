@@ -86,6 +86,7 @@ export const syncUsers = inngest.createFunction(
             syncStartedAt: syncTime
           }
         });
+
         return {
           status: 'ongoing'
         };
