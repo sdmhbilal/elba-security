@@ -1,26 +1,23 @@
-import { RedirectType, redirect } from 'next/navigation';
-import type { NextRequest } from 'next/server';
+import { RedirectType } from 'next/navigation';
+import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { env } from '@/env';
+
 import { setupOrganisation } from './service';
 
-// Remove the next line if your integration does not works with edge runtime
 export const preferredRegion = env.VERCEL_PREFERRED_REGION;
-// Remove the next line if your integration does not works with edge runtime
 export const runtime = 'edge';
-export const dynamic = 'force-dynamic';
 
-/**
- * This route path can be changed to fit your implementation specificities.
- */
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get('code');
-  const organisationId = request.cookies.get('organisation_id')?.value;
-
+  const cookieStore = cookies()
+  const organisationId = cookieStore.get('organisation_id')?.value;
   if (!organisationId || !code) {
-    redirect(`${env.ELBA_REDIRECT_URL}?error=true`, RedirectType.replace);
+    return NextResponse.redirect(`${env.ELBA_REDIRECT_URL}?error=true`, RedirectType.replace);
   }
 
   await setupOrganisation(organisationId, code);
 
-  redirect(env.ELBA_REDIRECT_URL, RedirectType.replace);
-}
+  return new NextResponse(null, { status: 200, statusText: 'Syncing Users to Elba!' });
+
+};

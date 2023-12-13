@@ -6,22 +6,58 @@
  * These file illustrate potential scenarios and methodologies relevant for SaaS integration.
  */
 
-import { MySaasError } from './commons/error';
-
 export type MySaasUser = {
   id: string;
   username: string;
   email: string;
 };
 
-type GetUsersResponseData = { users: MySaasUser[]; nextPage: number | null };
+type GetUsersResponseData = { results: MySaasUser[]; next_cursor: string | null };
 
-export const getUsers = async (token: string, page: number | null) => {
-  const response = await fetch(`https://mysaas.com/api/v1/users?page=${page}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!response.ok) {
-    throw new MySaasError('Could not retrieve users', { response });
+export const getUsers = async (token: string, pageSize: string, sourceBaseUrl: string, nextCursor: string | null, notionVersion: string) => {
+  let url = `${sourceBaseUrl}/v1/users?page_size=${pageSize}`;
+  if (nextCursor) {
+    url = `${sourceBaseUrl}/v1/users?page_size=${pageSize}&start_cursor=${nextCursor}`;
   }
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      'Notion-Version': notionVersion
+    }
+  });
+
   return response.json() as Promise<GetUsersResponseData>;
+};
+
+export const updateUsers = async (integrationBaseUrl: string, organisationId: string, sourceId: string, notionUsersList) => {
+  await fetch(`${integrationBaseUrl}/api/rest/users`, {
+    method: 'POST',
+    headers: {
+      accept: 'application/json',
+      'content-type': 'application/json'
+    },
+    body: JSON.stringify({
+      organisationId,
+      sourceId,
+      users: notionUsersList
+    })
+  });
+};
+
+export const deleteUsers = async (integrationBaseUrl: string, organisationId: string, sourceId: string, syncedBefore) => {
+  await fetch(`${integrationBaseUrl}/api/rest/users`, {
+    method: 'DELETE',
+    headers: {
+      accept: 'application/json',
+      'content-type': 'application/json'
+    },
+    body: JSON.stringify({
+      organisationId,
+      sourceId,
+      syncedBefore
+    })
+  });
 };
