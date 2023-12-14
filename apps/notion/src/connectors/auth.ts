@@ -13,24 +13,28 @@ const getTokenResponseDataSchema = z.union([
 ]);
 
 export const getToken = async (code: string) => {
-  const credentials = Buffer.from(`${env.NOTION_CLIENT_ID}:${env.NOTION_CLIENT_SECRET}`).toString(
-    'base64'
-  );
-
-  const response = await fetch(`${env.NOTION_API_BASE_URL}/v1/oauth/token`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Basic ${credentials}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      grant_type: 'authorization_code',
-      code,
-      redirect_uri: env.NOTION_REDIRECT_URL,
-    }),
-  });
-
   try {
+    const credentials = Buffer.from(`${env.NOTION_CLIENT_ID}:${env.NOTION_CLIENT_SECRET}`).toString(
+      'base64'
+    );
+
+    const response = await fetch(`${env.NOTION_API_BASE_URL}/v1/oauth/token`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${credentials}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        grant_type: 'authorization_code',
+        code,
+        redirect_uri: env.NOTION_REDIRECT_URL,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new NotionError('Could not retrieve token', { response });
+    }
+
     const data: unknown = await response.json();
     const result = getTokenResponseDataSchema.safeParse(data);
 
@@ -50,6 +54,6 @@ export const getToken = async (code: string) => {
     if (error instanceof NotionError) {
       throw error;
     }
-    throw new NotionError('Could not retrieve token', { response, cause: error });
+    throw new NotionError('Could not retrieve token', { cause: error });
   }
 };

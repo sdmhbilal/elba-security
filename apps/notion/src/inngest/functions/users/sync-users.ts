@@ -9,26 +9,26 @@ import { inngest } from '@/inngest/client';
 
 const formatElbaUser = (user: MySaasUser): User => ({
   id: user.id,
-  displayName: user?.name,
-  email: user?.person?.email,
+  displayName: user.name,
+  email: user.person?.email,
   additionalEmails: [],
 });
 
 type EventData = {
-  organisationId: string,
-  syncStartedAt?: Date,
-  page?: string
+  organisationId: string;
+  syncStartedAt?: Date;
+  page?: string;
 };
 
 type GetUserResult = {
-  next_cursor?: string,
-  results: []
+  next_cursor?: string;
+  results: [];
 };
 
 export const syncUsers = inngest.createFunction(
   {
     id: 'synchronize-users',
-    priority: { run: 'event.data.is_first_scan' ? 600 : -600 }
+    priority: { run: 'event.data.is_first_scan ? 600 : -600' },
   },
   { event: 'notion/users.sync.requested' },
   async ({ event, step }) => {
@@ -36,7 +36,7 @@ export const syncUsers = inngest.createFunction(
       const {
         organisationId,
         syncStartedAt = new Date(),
-        page: nextPageToken
+        page: nextPageToken,
       } = event.data as EventData;
 
       const syncTime = syncStartedAt;
@@ -46,7 +46,7 @@ export const syncUsers = inngest.createFunction(
         NOTION_VERSION: notionVersion,
         NOTION_API_BASE_URL: sourceBaseUrl,
         SOURCE_ID: sourceId,
-        USERS_SYNC_JOB_BATCH_SIZE: pageSize
+        USERS_SYNC_JOB_BATCH_SIZE: pageSize,
       } = process.env;
 
       let nextCursor = nextPageToken;
@@ -56,7 +56,7 @@ export const syncUsers = inngest.createFunction(
           .select({ token: Organisation.accessToken })
           .from(Organisation)
           .where(eq(Organisation.id, organisationId));
-        
+
         if (!organisation) {
           throw new NonRetriableError(`Could not retrieve organisation with id=${organisationId}`);
         }
@@ -65,9 +65,15 @@ export const syncUsers = inngest.createFunction(
       });
 
       const nextPage = await step.run('list-users', async () => {
-        const result = await getUsers(token, pageSize, sourceBaseUrl, nextCursor, notionVersion) as GetUserResult;
+        const result = (await getUsers(
+          token,
+          pageSize,
+          sourceBaseUrl,
+          nextCursor,
+          notionVersion
+        )) as GetUserResult;
         const { next_cursor: nextPageCursor } = result;
-        let users = result.results.filter(user => user.object === 'user');
+        let users = result.results.filter((user) => user.object === 'user');
 
         users = users.map(formatElbaUser);
         await updateUsers(integrationBaseUrl, organisationId, sourceId, users);
@@ -83,15 +89,15 @@ export const syncUsers = inngest.createFunction(
           data: {
             ...event.data,
             page: nextCursor,
-            syncStartedAt: syncTime
-          }
+            syncStartedAt: syncTime,
+          },
         });
 
         return {
-          status: 'ongoing'
+          status: 'ongoing',
         };
       }
-    
+
       await deleteUsers(integrationBaseUrl, organisationId, sourceId, syncTime);
     } catch (error) {
       return new NextResponse(error.message, { status: 500, statusText: 'Unknown Error' });
