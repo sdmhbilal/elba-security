@@ -6,18 +6,20 @@
  * These file illustrate potential scenarios and methodologies relevant for SaaS integration.
  */
 
-export type MySaasUser = {
+import { NotionError } from './commons/error';
+
+export type NotionUser = {
   id: string;
   username: string;
   email: string;
 };
 
-type GetUsersResponseData = { results: MySaasUser[]; next_cursor: string | null };
+type GetUsersResponseData = { results: NotionUser[]; next_cursor: string | null };
 
-export const getUsers = async (token: string, pageSize: string, sourceBaseUrl: string, nextCursor: string | null, notionVersion: string) => {
+export const getUsers = async (token: string, pageSize: string, sourceBaseUrl: string, page: string | null, notionVersion: string) => {
   let url = `${sourceBaseUrl}/v1/users?page_size=${pageSize}`;
-  if (nextCursor) {
-    url = `${sourceBaseUrl}/v1/users?page_size=${pageSize}&start_cursor=${nextCursor}`;
+  if (page) {
+    url = `${sourceBaseUrl}/v1/users?page_size=${pageSize}&start_cursor=${page}`;
   }
 
   const response = await fetch(url, {
@@ -28,6 +30,10 @@ export const getUsers = async (token: string, pageSize: string, sourceBaseUrl: s
       'Notion-Version': notionVersion
     }
   });
+
+  if (!response.ok) {
+    throw new NotionError('Could not retrieve users', { response });
+  }
 
   return response.json() as Promise<GetUsersResponseData>;
 };

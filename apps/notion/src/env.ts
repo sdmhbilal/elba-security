@@ -7,6 +7,8 @@ export const env = z
     ELBA_REDIRECT_URL: z.string().url(),
     ELBA_SOURCE_ID: z.string().uuid(),
     NOTION_API_BASE_URL: z.string().url(),
+    NOTION_VERSION: z.string().min(1),
+    USERS_SYNC_JOB_BATCH_SIZE: z.coerce.number().int().positive(),
     NOTION_CLIENT_ID: z.string().min(1),
     NOTION_CLIENT_SECRET: z.string().min(1),
     NOTION_REDIRECT_URL: z.string().url(),

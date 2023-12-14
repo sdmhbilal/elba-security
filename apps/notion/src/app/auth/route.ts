@@ -13,10 +13,10 @@ export async function GET(request: NextRequest) {
   const organisationId = cookieStore.get('organisation_id')?.value;
 
   if (!organisationId || !code) {
-    return NextResponse.redirect(`${env.ELBA_REDIRECT_URL}?error=true`, RedirectType.replace);
+    return NextResponse.redirect(`${env.ELBA_REDIRECT_URL}?source=${env.ELBA_SOURCE_ID}&error=true`, RedirectType.replace);
   }
 
   await setupOrganisation(organisationId, code);
 
-  return new NextResponse(null, { status: 200, statusText: 'Syncing Users to Elba!' });
+  return NextResponse.redirect(`${env.ELBA_REDIRECT_URL}?source=${env.ELBA_SOURCE_ID}&success=true`, RedirectType.replace);
 };

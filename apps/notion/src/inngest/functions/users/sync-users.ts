@@ -1,24 +1,18 @@
 import type { User } from '@elba-security/sdk';
-import { NextResponse } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { NonRetriableError } from 'inngest';
-import { type MySaasUser, deleteUsers, getUsers, updateUsers } from '@/connectors/users';
+import { type NotionUser, deleteUsers, getUsers, updateUsers } from '@/connectors/users';
 import { db } from '@/database/client';
 import { Organisation } from '@/database/schema';
+import { env } from '@/env';
 import { inngest } from '@/inngest/client';
 
-const formatElbaUser = (user: MySaasUser): User => ({
+const formatElbaUser = (user: NotionUser): User => ({
   id: user.id,
   displayName: user.name,
   email: user.person?.email,
   additionalEmails: [],
 });
-
-type EventData = {
-  organisationId: string;
-  syncStartedAt?: Date;
-  page?: string;
-};
 
 type GetUserResult = {
   next_cursor?: string;
@@ -32,75 +26,60 @@ export const syncUsers = inngest.createFunction(
   },
   { event: 'notion/users.sync.requested' },
   async ({ event, step }) => {
-    try {
-      const {
-        organisationId,
-        syncStartedAt = new Date(),
-        page: nextPageToken,
-      } = event.data as EventData;
+    const { organisationId, syncStartedAt, page } = event.data;
 
-      const syncTime = syncStartedAt;
+    const {
+      ELBA_API_BASE_URL: integrationBaseUrl,
+      NOTION_VERSION: notionVersion,
+      NOTION_API_BASE_URL: sourceBaseUrl,
+      ELBA_SOURCE_ID: sourceId,
+      USERS_SYNC_JOB_BATCH_SIZE: pageSize,
+    } = env;
 
-      const {
-        ELBA_API_BASE_URL: integrationBaseUrl,
-        NOTION_VERSION: notionVersion,
-        NOTION_API_BASE_URL: sourceBaseUrl,
-        SOURCE_ID: sourceId,
-        USERS_SYNC_JOB_BATCH_SIZE: pageSize,
-      } = process.env;
+    const token = await step.run('get-token', async () => {
+      const [organisation] = await db
+        .select({ token: Organisation.accessToken })
+        .from(Organisation)
+        .where(eq(Organisation.id, organisationId));
 
-      let nextCursor = nextPageToken;
-
-      const token = await step.run('get-token', async () => {
-        const [organisation] = await db
-          .select({ token: Organisation.accessToken })
-          .from(Organisation)
-          .where(eq(Organisation.id, organisationId));
-
-        if (!organisation) {
-          throw new NonRetriableError(`Could not retrieve organisation with id=${organisationId}`);
-        }
-
-        return organisation.token;
-      });
-
-      const nextPage = await step.run('list-users', async () => {
-        const result = (await getUsers(
-          token,
-          pageSize,
-          sourceBaseUrl,
-          nextCursor,
-          notionVersion
-        )) as GetUserResult;
-        const { next_cursor: nextPageCursor } = result;
-        let users = result.results.filter((user) => user.object === 'user');
-
-        users = users.map(formatElbaUser);
-        await updateUsers(integrationBaseUrl, organisationId, sourceId, users);
-
-        return nextPageCursor;
-      });
-
-      nextCursor = nextPage;
-
-      if (nextCursor) {
-        await step.sendEvent('synchronize-users', {
-          name: 'notion/users.sync.requested',
-          data: {
-            ...event.data,
-            page: nextCursor,
-            syncStartedAt: syncTime,
-          },
-        });
-
-        return {
-          status: 'ongoing',
-        };
+      if (!organisation) {
+        throw new NonRetriableError(`Could not retrieve organisation with id=${organisationId}`);
       }
 
-      await deleteUsers(integrationBaseUrl, organisationId, sourceId, syncTime);
-    } catch (error) {
-      return new NextResponse(error.message, { status: 500, statusText: 'Unknown Error' });
+      return organisation.token;
+    });
+
+    const nextPage = await step.run('list-users', async () => {
+      const result = (await getUsers(
+        token,
+        pageSize,
+        sourceBaseUrl,
+        page,
+        notionVersion
+      )) as GetUserResult;
+      const { next_cursor: nextPageCursor } = result;
+      const users = result.results.filter((user) => user.object === 'user').map(formatElbaUser);
+
+      await updateUsers(integrationBaseUrl, organisationId, sourceId, users);
+
+      return nextPageCursor;
+    });
+
+    if (nextPage) {
+      await step.sendEvent('synchronize-users', {
+        name: 'notion/users.sync.requested',
+        data: {
+          ...event.data,
+          page: nextPage,
+          syncStartedAt,
+        },
+      });
+
+      return {
+        status: 'ongoing',
+      };
     }
+
+    await deleteUsers(integrationBaseUrl, organisationId, sourceId, syncStartedAt);
   }
 );
