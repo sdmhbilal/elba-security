@@ -42,9 +42,9 @@ export const syncUsers = inngest.createFunction(
       const syncTime = syncStartedAt;
 
       const {
-        INTEGRAION_BASE_URL: integrationBaseUrl,
+        ELBA_API_BASE_URL: integrationBaseUrl,
         NOTION_VERSION: notionVersion,
-        SOURCE_BASE_URL: sourceBaseUrl,
+        NOTION_API_BASE_URL: sourceBaseUrl,
         SOURCE_ID: sourceId,
         USERS_SYNC_JOB_BATCH_SIZE: pageSize
       } = process.env;

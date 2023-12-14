@@ -9,7 +9,7 @@ export const runtime = 'edge';
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get('code');
-  const cookieStore = cookies()
+  const cookieStore = cookies();
   const organisationId = cookieStore.get('organisation_id')?.value;
 
   if (!organisationId || !code) {

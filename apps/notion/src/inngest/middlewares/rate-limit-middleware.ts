@@ -1,5 +1,5 @@
 import { InngestMiddleware, RetryAfterError } from 'inngest';
-import { MySaasError } from '@/connectors/commons/error';
+import { NotionError } from '@/connectors/commons/error';
 
 /**
  * This middleware, `rateLimitMiddleware`, is designed for use with the Inngest serverless framework.
@@ -27,7 +27,7 @@ export const rateLimitMiddleware = new InngestMiddleware({
               ...context
             } = ctx;
             const retryAfter =
-              error instanceof MySaasError && error.response?.headers.get('Retry-After');
+              error instanceof NotionError && error.response?.headers.get('Retry-After');
 
             if (!retryAfter) {
               return;

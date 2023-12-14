@@ -35,9 +35,6 @@ importers:
       drizzle-orm:
         specifier: ^0.29.1
         version: 0.29.1(@neondatabase/serverless@0.6.0)(@vercel/postgres@0.5.1)(pg@8.11.3)(postgres@3.4.3)
-      fs:
-        specifier: 0.0.1-security
-        version: 0.0.1-security
       inngest:
         specifier: ^3.6.2
         version: 3.6.2(typescript@5.2.2)
@@ -3478,10 +3475,6 @@ packages:
   /fs.realpath@1.0.0:
     resolution: {integrity: sha512-OO0pH2lK6a0hZnAdau5ItzHPI6pUlvI7jMVnxUQRtw4owF2wk8lOSabtGDCTP4Ggrg2MbGnWO9X8K1t4+fGMDw==}
     dev: true
-
-  /fs@0.0.1-security:
-    resolution: {integrity: sha512-3XY9e1pP0CVEUCdj5BmfIZxRBTSDycnbqhIOGec9QYtmVH2fbLpj86CFWkrNOkt/Fvty4KZG5lTglL9j/gJ87w==}
-    dev: false
 
   /fsevents@2.3.3:
     resolution: {integrity: sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==}

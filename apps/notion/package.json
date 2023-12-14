@@ -23,7 +23,6 @@
     "@neondatabase/serverless": "^0.6.0",
     "@vercel/postgres": "^0.5.1",
     "drizzle-orm": "^0.29.1",
-    "fs": "0.0.1-security",
     "inngest": "^3.6.2",
     "msw": "^2.0.1",
     "next": "14.0.1",
