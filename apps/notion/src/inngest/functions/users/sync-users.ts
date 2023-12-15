@@ -22,7 +22,7 @@ type GetUserResult = {
 export const syncUsers = inngest.createFunction(
   {
     id: 'synchronize-users',
-    priority: { run: 'event.data.is_first_scan ? 600 : -600' },
+    priority: { run: 'event.data.is_first_scan' ? '600' : '-600' },
   },
   { event: 'notion/users.sync.requested' },
   async ({ event, step }) => {
