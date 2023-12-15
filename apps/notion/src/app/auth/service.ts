@@ -28,4 +28,8 @@ export const setupOrganisation = async (organisationId: string, code: string) =>
       organisationId
     }
   });
+
+  await inngest.send({
+    name: 'request-organisations-users-sync',
+  });
 };
