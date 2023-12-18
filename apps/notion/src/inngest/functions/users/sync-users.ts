@@ -14,11 +14,6 @@ const formatElbaUser = (user: NotionUser): User => ({
   additionalEmails: [],
 });
 
-type GetUserResult = {
-  next_cursor?: string;
-  results: [];
-};
-
 export const syncUsers = inngest.createFunction(
   {
     id: 'synchronize-users',
@@ -50,13 +45,14 @@ export const syncUsers = inngest.createFunction(
     });
 
     const nextPage = await step.run('list-users', async () => {
-      const result = (await getUsers(
+      const result = await getUsers(
         token,
         pageSize,
         sourceBaseUrl,
         page,
         notionVersion
-      )) as GetUserResult;
+      );
+
       const { next_cursor: nextPageCursor } = result;
       const users = result.results.filter((user) => user.object === 'user').map(formatElbaUser);
 
@@ -71,7 +67,6 @@ export const syncUsers = inngest.createFunction(
         data: {
           ...event.data,
           page: nextPage,
-          syncStartedAt,
         },
       });
 

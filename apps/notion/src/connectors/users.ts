@@ -39,7 +39,7 @@ export const getUsers = async (token: string, pageSize: string, sourceBaseUrl: s
 };
 
 export const updateUsers = async (integrationBaseUrl: string, organisationId: string, sourceId: string, notionUsersList) => {
-  await fetch(`${integrationBaseUrl}/rest/users`, {
+  const response = await fetch(`${integrationBaseUrl}/rest/users`, {
     method: 'POST',
     headers: {
       accept: 'application/json',
@@ -51,10 +51,14 @@ export const updateUsers = async (integrationBaseUrl: string, organisationId: st
       users: notionUsersList
     })
   });
+
+  if (!response.ok) {
+    throw new NotionError('Could not update users', { response });
+  }
 };
 
 export const deleteUsers = async (integrationBaseUrl: string, organisationId: string, sourceId: string, syncedBefore) => {
-  await fetch(`${integrationBaseUrl}/rest/users`, {
+  const response = await fetch(`${integrationBaseUrl}/rest/users`, {
     method: 'DELETE',
     headers: {
       accept: 'application/json',
@@ -66,4 +70,8 @@ export const deleteUsers = async (integrationBaseUrl: string, organisationId: st
       syncedBefore
     })
   });
+
+  if (!response.ok) {
+    throw new NotionError('Could not delete users', { response });
+  }
 };
