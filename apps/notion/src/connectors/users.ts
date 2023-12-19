@@ -1,17 +1,22 @@
-/**
- * DISCLAIMER:
- * This is an example connector, the function has a poor implementation. When requesting against API endpoint we might prefer
- * to valid the response data received using zod than unsafely assign types to it.
- * This might not fit your usecase if you are using a SDK to connect to the Saas.
- * These file illustrate potential scenarios and methodologies relevant for SaaS integration.
- */
-
 import { NotionError } from './commons/error';
+
+type Person = {
+  email: string;
+};
 
 export type NotionUser = {
   id: string;
-  username: string;
+  object: string;
+  name: string;
+  person: Person;
+  type: string;
+};
+
+export type ElbaUser = {
+  id: string;
+  displayName: string;
   email: string;
+  additionalEmails: string[];
 };
 
 type GetUsersResponseData = { results: NotionUser[]; next_cursor: string | null };
@@ -38,7 +43,7 @@ export const getUsers = async (token: string, pageSize: string, sourceBaseUrl: s
   return response.json() as Promise<GetUsersResponseData>;
 };
 
-export const updateUsers = async (integrationBaseUrl: string, organisationId: string, sourceId: string, notionUsersList) => {
+export const updateUsers = async (integrationBaseUrl: string, organisationId: string, sourceId: string, users: ElbaUser[]) => {
   const response = await fetch(`${integrationBaseUrl}/rest/users`, {
     method: 'POST',
     headers: {
@@ -48,7 +53,7 @@ export const updateUsers = async (integrationBaseUrl: string, organisationId: st
     body: JSON.stringify({
       organisationId,
       sourceId,
-      users: notionUsersList
+      users
     })
   });
 
@@ -57,7 +62,7 @@ export const updateUsers = async (integrationBaseUrl: string, organisationId: st
   }
 };
 
-export const deleteUsers = async (integrationBaseUrl: string, organisationId: string, sourceId: string, syncedBefore) => {
+export const deleteUsers = async (integrationBaseUrl: string, organisationId: string, sourceId: string, syncedBefore: Date) => {
   const response = await fetch(`${integrationBaseUrl}/rest/users`, {
     method: 'DELETE',
     headers: {

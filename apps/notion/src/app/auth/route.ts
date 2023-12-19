@@ -1,8 +1,7 @@
 import { RedirectType } from 'next/navigation';
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { env } from '@/env';
-
 import { setupOrganisation } from './service';
 
 export const runtime = 'edge';

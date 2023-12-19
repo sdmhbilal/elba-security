@@ -1,25 +1,25 @@
-import type { User } from '@elba-security/sdk';
 import { eq } from 'drizzle-orm';
 import { NonRetriableError } from 'inngest';
-import { type NotionUser, deleteUsers, getUsers, updateUsers } from '@/connectors/users';
+import { type NotionUser, type ElbaUser, deleteUsers, getUsers, updateUsers } from '@/connectors/users';
 import { db } from '@/database/client';
 import { Organisation } from '@/database/schema';
 import { env } from '@/env';
 import { inngest } from '@/inngest/client';
 
-const formatElbaUser = (user: NotionUser): User => ({
+const formatElbaUser = (user: NotionUser): ElbaUser => ({
   id: user.id,
   displayName: user.name,
-  email: user.person?.email,
+  email: user.person.email,
   additionalEmails: [],
 });
 
 export const syncUsers = inngest.createFunction(
   {
     id: 'synchronize-users',
-    priority: { run: 'event.data.is_first_scan' ? '600' : '-600' },
+    priority: { run: 'event.data.is_first_scan ? 600 : -600' },
+  }, {
+    event: 'notion/users.sync.requested'
   },
-  { event: 'notion/users.sync.requested' },
   async ({ event, step }) => {
     const { organisationId, syncStartedAt, page } = event.data;
 
@@ -54,7 +54,8 @@ export const syncUsers = inngest.createFunction(
       );
 
       const { next_cursor: nextPageCursor } = result;
-      const users = result.results.filter((user) => user.object === 'user').map(formatElbaUser);
+
+      const users = result.results.filter((user) => user.object === 'user' && user.type === 'person').map(formatElbaUser);
 
       await updateUsers(integrationBaseUrl, organisationId, sourceId, users);
 

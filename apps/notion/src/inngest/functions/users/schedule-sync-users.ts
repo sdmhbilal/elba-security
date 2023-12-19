@@ -1,5 +1,4 @@
-import { GetEvents } from 'inngest';
-
+import type { GetEvents } from 'inngest';
 import { db } from '@/database/client';
 import { Organisation } from '@/database/schema';
 import { inngest } from '@/inngest/client';
@@ -15,16 +14,15 @@ export const scheduleSyncUsers = inngest.createFunction(
     .from(Organisation);
 
     const events = organisations.map<Events['notion/users.sync.requested']>(
-      (obj) => {
-        return {
-          name: 'notion/users.sync.requested',
-          data: {
-            organisationId: obj.organisationId,
-            isFirstSync: false,
-            syncStartedAt: Date.now(),
-          }
-        };
-      }
+      obj => ({
+        name: 'notion/users.sync.requested',
+        data: {
+          organisationId: obj.organisationId,
+          isFirstSync: false,
+          syncStartedAt: new Date(),
+          page: null
+        }
+      })
     );
 
     await step.sendEvent('synchronize-users', events);

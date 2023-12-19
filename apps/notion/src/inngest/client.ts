@@ -1,4 +1,15 @@
 import { EventSchemas, Inngest } from 'inngest';
-import { rateLimitMiddleware } from './middlewares/rate-limit-middleware';
 
-export const inngest = new Inngest({ id: 'notion-app' });
+export const inngest = new Inngest({
+  id: 'notion-app',
+  schemas: new EventSchemas().fromRecord<{
+    'notion/users.sync.requested': {
+      data: {
+        isFirstSync: boolean;
+        organisationId: string;
+        syncStartedAt: Date;
+        page: string | null;
+      };
+    };
+  }>()
+});

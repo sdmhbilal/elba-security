@@ -25,7 +25,9 @@ export const setupOrganisation = async (organisationId: string, code: string) =>
     name: 'notion/users.sync.requested',
     data: {
       isFirstSync: true,
-      organisationId
+      organisationId,
+      syncStartedAt: new Date(),
+      page: null
     }
   });
 
