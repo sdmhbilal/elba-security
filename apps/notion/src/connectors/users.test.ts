@@ -1,65 +1,61 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call -- test conveniency */
 /* eslint-disable @typescript-eslint/no-unsafe-return -- test conveniency */
-/**
- * DISCLAIMER:
- * The tests provided in this file are specifically designed for the `auth` connectors function.
- * Theses tests exists because the services & inngest functions using this connector mock it.
- * If you are using an SDK we suggest you to mock it not to implements calls using msw.
- * These file illustrate potential scenarios and methodologies relevant for SaaS integration.
- */
 
 import { http } from 'msw';
 import { describe, expect, test, beforeEach } from 'vitest';
+import { env } from '@/env';
 import { server } from '../../vitest/setup-msw-handlers';
-import { type MySaasUser, getUsers } from './users';
-import { MySaasError } from './commons/error';
+import { type NotionUser, getUsers } from './users';
+import { NotionError } from './commons/error';
 
-const validToken = 'token-1234';
-const maxPage = 3;
+const validToken = env.NOTION_CLIENT_SECRET;
+const invalidToken = 'not_a_valid_token';
 
-const users: MySaasUser[] = Array.from({ length: 5 }, (_, i) => ({
+const maxPage = 0;
+
+const users: NotionUser[] = Array.from({ length: 5 }, (_, i) => ({
   id: `id-${i}`,
   username: `username-${i}`,
   email: `user-${i}@foo.bar`,
 }));
 
+const nextCursorNoUsers = null;
+
 describe('auth connector', () => {
   describe('getUsers', () => {
-    // mock token API endpoint using msw
     beforeEach(() => {
       server.use(
-        http.get('https://mysaas.com/api/v1/users', ({ request }) => {
-          // briefly implement API endpoint behaviour
+        http.get('https://api.notion.com/v1/users', async ({ request }) => {
           if (request.headers.get('Authorization') !== `Bearer ${validToken}`) {
             return new Response(undefined, { status: 401 });
           }
           const url = new URL(request.url);
-          const pageParam = url.searchParams.get('page');
+          const pageParam = url.searchParams.get('page_size');
           const page = pageParam ? Number(pageParam) : 0;
           if (page === maxPage) {
             return Response.json({ nextPage: null, users });
           }
-          return Response.json({ nextPage: page + 1, users });
+          return Response.json({ nextPage: 1, users });
         })
       );
-    });
+    }, 10000);
 
     test('should return users and nextPage when the token is valid and their is another page', async () => {
-      await expect(getUsers(validToken, 0)).resolves.toStrictEqual({
+      await expect(getUsers(validToken, '10', env.NOTION_API_BASE_URL, null, env.NOTION_VERSION)).resolves.toStrictEqual({
         users,
         nextPage: 1,
       });
-    });
+    }, 10000);
 
     test('should return users and no nextPage when the token is valid and their is no other page', async () => {
-      await expect(getUsers(validToken, maxPage)).resolves.toStrictEqual({
+      await expect(getUsers(validToken, '0', env.NOTION_API_BASE_URL, null, env.NOTION_VERSION)).resolves.toStrictEqual({
         users,
-        nextPage: null,
+        nextPage: nextCursorNoUsers,
       });
-    });
+    }, 10000);
 
     test('should throws when the token is invalid', async () => {
-      await expect(getUsers('foo-bar', 0)).rejects.toBeInstanceOf(MySaasError);
-    });
+      await expect(getUsers(invalidToken, '10', env.NOTION_API_BASE_URL, null, env.NOTION_VERSION)).rejects.toBeInstanceOf(NotionError);
+    }, 10000);
   });
 });

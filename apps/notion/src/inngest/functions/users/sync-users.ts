@@ -77,5 +77,8 @@ export const syncUsers = inngest.createFunction(
     }
 
     await deleteUsers(integrationBaseUrl, organisationId, sourceId, syncStartedAt);
+    return {
+      status: 'completed',
+    }
   }
 );

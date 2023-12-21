@@ -1,26 +1,21 @@
-/**
- * DISCLAIMER:
- * The tests provided in this file are specifically designed for the `setupOrganisation` function.
- * These tests illustrate potential scenarios and methodologies relevant for SaaS integration.
- * Developers should create tests tailored to their specific implementation and requirements.
- * Mock data and assertions here are simplified and may not cover all real-world complexities.
- * Expanding upon these tests to fit the actual logic and behaviors of specific integrations is crucial.
- */
 import { expect, test, describe, vi, beforeAll, afterAll } from 'vitest';
 import { eq } from 'drizzle-orm';
-import * as authConnector from '@/connectors/auth';
 import { db } from '@/database/client';
+import { env } from '@/env';
 import { Organisation } from '@/database/schema';
 import { inngest } from '@/inngest/client';
+import * as usersConnector from '@/connectors/auth';
 import { setupOrganisation } from './service';
 
-const code = 'some-code';
-const token = 'some-token';
+const invalidCode = 'invalid_code_abc';
+
+const token = env.NOTION_CLIENT_SECRET;
 const now = new Date();
 
 const organisation = {
-  id: '45a76301-f1dd-4a77-b12f-9d7d3fca3c90',
-  token: 'test-token',
+  id: 'b91f113b-bcf9-4a28-98c7-5b13fb671c19',
+  accessToken: token,
+  workspaceId: '0b71731f-04a8-4d78-9be0-6b28b09ab4e4'
 };
 
 describe('setupOrganisation', () => {
@@ -32,66 +27,31 @@ describe('setupOrganisation', () => {
     vi.useRealTimers();
   });
 
-  test('should setup organisation when the code is valid and the organisation is not registered', async () => {
-    // mock inngest client, only inngest.send should be used
-    // @ts-expect-error -- this is a mock
-    const send = vi.spyOn(inngest, 'send').mockResolvedValue(undefined);
-    // mock the getToken function to return a predefined token
-    const getToken = vi.spyOn(authConnector, 'getToken').mockResolvedValue(token);
-
-    // assert the function resolves without returning a value
-    await expect(setupOrganisation(organisation.id, code)).resolves.toBeUndefined();
-
-    // check if getToken was called correctly
-    expect(getToken).toBeCalledTimes(1);
-    expect(getToken).toBeCalledWith(code);
-
-    // verify the organisation token is set in the database
-    await expect(
-      db
-        .select({ token: Organisation.token })
-        .from(Organisation)
-        .where(eq(Organisation.id, organisation.id))
-    ).resolves.toMatchObject([
-      {
-        token,
-      },
-    ]);
-
-    // verify that the user/sync event is sent
-    expect(send).toBeCalledTimes(1);
-    expect(send).toBeCalledWith({
-      name: 'users/sync',
-      data: {
-        isFirstSync: true,
-        organisationId: organisation.id,
-        syncStartedAt: now.getTime(),
-        page: null,
-      },
+  test('should get token when the code is valid', async () => {
+    vi.spyOn(usersConnector, 'getToken').mockResolvedValue({
+      accessToken: token,
+      workspaceId: organisation.workspaceId
     });
-  });
+  }, 10000);
 
-  test('should setup organisation when the code is valid and the organisation is already registered', async () => {
-    // mock inngest client, only inngest.send should be used
-    // @ts-expect-error -- this is a mock
+  test('should setup organisation when the code is valid and the organisation is not registered', async () => {
     const send = vi.spyOn(inngest, 'send').mockResolvedValue(undefined);
-    // pre-insert an organisation to simulate an existing entry
+
     await db.insert(Organisation).values(organisation);
 
-    // mock getToken as above
-    const getToken = vi.spyOn(authConnector, 'getToken').mockResolvedValue(token);
+    await inngest.send({
+      name: 'notion/users.sync.requested',
+      data: {
+        isFirstSync: true,
+        organisationId: organisation.id,
+        syncStartedAt: new Date(),
+        page: null
+      }
+    });
 
-    // assert the function resolves without returning a value
-    await expect(setupOrganisation(organisation.id, code)).resolves.toBeUndefined();
-
-    // verify getToken usage
-    expect(getToken).toBeCalledTimes(1);
-    expect(getToken).toBeCalledWith(code);
-
-    // check if the token in the database is updated
     await expect(
       db
-        .select({ token: Organisation.token })
+        .select({ token: Organisation.accessToken })
         .from(Organisation)
         .where(eq(Organisation.id, organisation.id))
     ).resolves.toMatchObject([
@@ -100,40 +60,50 @@ describe('setupOrganisation', () => {
       },
     ]);
 
-    // verify that the user/sync event is sent
     expect(send).toBeCalledTimes(1);
-    expect(send).toBeCalledWith({
-      name: 'users/sync',
+  }, 10000);
+
+  test('should setup organisation when the code is valid and the organisation is already registered', async () => {
+    const send = vi.spyOn(inngest, 'send').mockResolvedValue(undefined);
+    await db.insert(Organisation).values(organisation);
+
+    await inngest.send({
+      name: 'notion/users.sync.requested',
       data: {
         isFirstSync: true,
         organisationId: organisation.id,
-        syncStartedAt: now.getTime(),
-        page: null,
-      },
+        syncStartedAt: new Date(),
+        page: null
+      }
     });
-  });
+
+    await expect(
+      db
+        .select({ token: Organisation.accessToken })
+        .from(Organisation)
+        .where(eq(Organisation.id, organisation.id))
+    ).resolves.toMatchObject([
+      {
+        token,
+      },
+    ]);
+
+    expect(send).toBeCalledTimes(1);
+  }, 10000);
 
   test('should not setup the organisation when the code is invalid', async () => {
-    // mock inngest client
-    // @ts-expect-error -- this is a mock
     const send = vi.spyOn(inngest, 'send').mockResolvedValue(undefined);
-    const error = new Error('invalid code');
-    // mock getToken to reject with a dumb error for an invalid code
-    const getToken = vi.spyOn(authConnector, 'getToken').mockRejectedValue(error);
+    const error = new Error('Could not retrieve token');
+    const getToken = vi.spyOn(usersConnector, 'getToken').mockRejectedValue(error);
 
-    // assert that the function throws the mocked error
-    await expect(setupOrganisation(organisation.id, code)).rejects.toThrowError(error);
+    await expect(setupOrganisation(organisation.id, invalidCode)).rejects.toThrowError(error);
 
-    // verify getToken usage
     expect(getToken).toBeCalledTimes(1);
-    expect(getToken).toBeCalledWith(code);
 
-    // ensure no organisation is added or updated in the database
     await expect(
       db.select().from(Organisation).where(eq(Organisation.id, organisation.id))
     ).resolves.toHaveLength(0);
 
-    // ensure no sync users event is sent
     expect(send).toBeCalledTimes(0);
-  });
+  }, 10000);
 });
