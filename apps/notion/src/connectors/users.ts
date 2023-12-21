@@ -1,3 +1,4 @@
+import { env } from '@/env';
 import { NotionError } from './commons/error';
 
 type Person = {
@@ -22,10 +23,9 @@ export type ElbaUser = {
 type GetUsersResponseData = { results: NotionUser[]; next_cursor: string | null };
 
 export const getUsers = async (token: string, pageSize: string, sourceBaseUrl: string, page: string | null, notionVersion: string) => {
-  let url = `${sourceBaseUrl}/v1/users?page_size=${pageSize}`;
-  if (page) {
-    url = `${sourceBaseUrl}/v1/users?page_size=${pageSize}&start_cursor=${page}`;
-  }
+  const url = new URL(`${env.NOTION_API_BASE_URL}/v1/users`);
+  url.searchParams.append('page_size', pageSize)
+  if (page) url.searchParams.append('start_cursor', page)
 
   const response = await fetch(url, {
     method: 'GET',
@@ -41,42 +41,4 @@ export const getUsers = async (token: string, pageSize: string, sourceBaseUrl: s
   }
 
   return response.json() as Promise<GetUsersResponseData>;
-};
-
-export const updateUsers = async (integrationBaseUrl: string, organisationId: string, sourceId: string, users: ElbaUser[]) => {
-  const response = await fetch(`${integrationBaseUrl}/rest/users`, {
-    method: 'POST',
-    headers: {
-      accept: 'application/json',
-      'content-type': 'application/json'
-    },
-    body: JSON.stringify({
-      organisationId,
-      sourceId,
-      users
-    })
-  });
-
-  if (!response.ok) {
-    throw new NotionError('Could not update users', { response });
-  }
-};
-
-export const deleteUsers = async (integrationBaseUrl: string, organisationId: string, sourceId: string, syncedBefore: Date) => {
-  const response = await fetch(`${integrationBaseUrl}/rest/users`, {
-    method: 'DELETE',
-    headers: {
-      accept: 'application/json',
-      'content-type': 'application/json'
-    },
-    body: JSON.stringify({
-      organisationId,
-      sourceId,
-      syncedBefore
-    })
-  });
-
-  if (!response.ok) {
-    throw new NotionError('Could not delete users', { response });
-  }
 };

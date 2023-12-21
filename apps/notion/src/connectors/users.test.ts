@@ -25,7 +25,7 @@ describe('auth connector', () => {
   describe('getUsers', () => {
     beforeEach(() => {
       server.use(
-        http.get('https://api.notion.com/v1/users', async ({ request }) => {
+        http.get(`${env.NOTION_API_BASE_URL}/v1/users`, async ({ request }) => {
           if (request.headers.get('Authorization') !== `Bearer ${validToken}`) {
             return new Response(undefined, { status: 401 });
           }
@@ -33,29 +33,29 @@ describe('auth connector', () => {
           const pageParam = url.searchParams.get('page_size');
           const page = pageParam ? Number(pageParam) : 0;
           if (page === maxPage) {
-            return Response.json({ nextPage: null, users });
+            return Response.json({ users, nextPage: null, });
           }
-          return Response.json({ nextPage: 1, users });
+          return Response.json({ users, nextPage: 'next_cursor', });
         })
       );
-    }, 10000);
+    });
 
     test('should return users and nextPage when the token is valid and their is another page', async () => {
       await expect(getUsers(validToken, '10', env.NOTION_API_BASE_URL, null, env.NOTION_VERSION)).resolves.toStrictEqual({
         users,
-        nextPage: 1,
+        nextPage: 'next_cursor',
       });
-    }, 10000);
+    });
 
     test('should return users and no nextPage when the token is valid and their is no other page', async () => {
       await expect(getUsers(validToken, '0', env.NOTION_API_BASE_URL, null, env.NOTION_VERSION)).resolves.toStrictEqual({
         users,
         nextPage: nextCursorNoUsers,
       });
-    }, 10000);
+    });
 
     test('should throws when the token is invalid', async () => {
       await expect(getUsers(invalidToken, '10', env.NOTION_API_BASE_URL, null, env.NOTION_VERSION)).rejects.toBeInstanceOf(NotionError);
-    }, 10000);
+    });
   });
 });

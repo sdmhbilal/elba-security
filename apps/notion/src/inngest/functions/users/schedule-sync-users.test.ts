@@ -1,6 +1,5 @@
-import { expect, test, describe, vi } from 'vitest';
+import { expect, test, describe } from 'vitest';
 import { createInngestFunctionMock } from '@elba-security/test-utils';
-import { inngest } from '@/inngest/client';
 import { db } from '@/database/client';
 import { env } from '@/env';
 import { Organisation } from '@/database/schema';
@@ -16,14 +15,11 @@ const setup = createInngestFunctionMock(scheduleSyncUsers);
 
 describe('schedule-sync-users', () => {
   test('should abort sync when there is not any organisation', async () => {
-    const send = vi.spyOn(inngest, 'send').mockResolvedValue(undefined);
-    
-    await inngest.send({
-      name: 'request-organisations-users-sync',
-    });
+    const [result, { step }] = setup();
+    await expect(result).resolves.toBeUndefined();
 
-    expect(send).toBeCalledTimes(1);
-  }, 100000);
+    expect(step.sendEvent).toBeCalledTimes(1);
+  });
 
   test('should sync when there is/are organisations', async () => {
     await db.insert(Organisation).values(organisation);
@@ -32,5 +28,14 @@ describe('schedule-sync-users', () => {
     await expect(result).resolves.toBeUndefined();
     
     expect(step.sendEvent).toBeCalledTimes(1);
-  }, 100000);
+    expect(step.sendEvent).toBeCalledWith('synchronize-users', [{
+      name: 'notion/users.sync.requested',
+      data: {
+        organisationId: organisation.id,
+        isFirstSync: false,
+        syncStartedAt: new Date(),
+        page: null,
+      },
+    }]);
+  });
 });

@@ -1,10 +1,13 @@
 import { expect, test, describe, vi, beforeAll, afterAll } from 'vitest';
 import { eq } from 'drizzle-orm';
+import { createInngestFunctionMock } from '@elba-security/test-utils';
 import { db } from '@/database/client';
 import { env } from '@/env';
 import { Organisation } from '@/database/schema';
 import { inngest } from '@/inngest/client';
-import * as usersConnector from '@/connectors/auth';
+import * as authConnector from '@/connectors/auth';
+import * as usersConnector from '@/connectors/users';
+import { syncUsers } from '../../inngest/functions/users/sync-users';
 import { setupOrganisation } from './service';
 
 const invalidCode = 'invalid_code_abc';
@@ -18,6 +21,19 @@ const organisation = {
   workspaceId: '0b71731f-04a8-4d78-9be0-6b28b09ab4e4'
 };
 
+const results = [
+  {
+    object: 'user',
+    id: 'e876d211-bef9-4b40-a0d2-f862af5e017b',
+    name: 'Syed Bilal',
+    avatar_url: null,
+    type: 'person',
+    person: { email: 'syed.bilal@qbatch.com' }
+  }
+];
+
+const setup = createInngestFunctionMock(syncUsers, 'notion/users.sync.requested');
+
 describe('setupOrganisation', () => {
   beforeAll(() => {
     vi.setSystemTime(now);
@@ -27,27 +43,21 @@ describe('setupOrganisation', () => {
     vi.useRealTimers();
   });
 
-  test('should get token when the code is valid', async () => {
-    vi.spyOn(usersConnector, 'getToken').mockResolvedValue({
-      accessToken: token,
-      workspaceId: organisation.workspaceId
-    });
-  }, 10000);
-
   test('should setup organisation when the code is valid and the organisation is not registered', async () => {
-    const send = vi.spyOn(inngest, 'send').mockResolvedValue(undefined);
-
     await db.insert(Organisation).values(organisation);
-
-    await inngest.send({
-      name: 'notion/users.sync.requested',
-      data: {
-        isFirstSync: true,
-        organisationId: organisation.id,
-        syncStartedAt: new Date(),
-        page: null
-      }
+    vi.spyOn(usersConnector, 'getUsers').mockResolvedValue({
+      next_cursor: null,
+      results,
     });
+
+    const [result, { step }] = setup({
+      organisationId: organisation.id,
+      isFirstSync: true,
+      syncStartedAt: new Date(),
+      page: null,
+    });
+
+    await expect(result).resolves.toStrictEqual({ status: 'completed' });
 
     await expect(
       db
@@ -60,22 +70,24 @@ describe('setupOrganisation', () => {
       },
     ]);
 
-    expect(send).toBeCalledTimes(1);
-  }, 10000);
+    expect(step.sendEvent).toBeCalledTimes(0);
+  });
 
   test('should setup organisation when the code is valid and the organisation is already registered', async () => {
-    const send = vi.spyOn(inngest, 'send').mockResolvedValue(undefined);
     await db.insert(Organisation).values(organisation);
-
-    await inngest.send({
-      name: 'notion/users.sync.requested',
-      data: {
-        isFirstSync: true,
-        organisationId: organisation.id,
-        syncStartedAt: new Date(),
-        page: null
-      }
+    vi.spyOn(usersConnector, 'getUsers').mockResolvedValue({
+      next_cursor: null,
+      results,
     });
+
+    const [result, { step }] = setup({
+      organisationId: organisation.id,
+      isFirstSync: true,
+      syncStartedAt: new Date(),
+      page: null,
+    });
+
+    await expect(result).resolves.toStrictEqual({ status: 'completed' });
 
     await expect(
       db
@@ -88,13 +100,13 @@ describe('setupOrganisation', () => {
       },
     ]);
 
-    expect(send).toBeCalledTimes(1);
-  }, 10000);
+    expect(step.sendEvent).toBeCalledTimes(0);
+  });
 
   test('should not setup the organisation when the code is invalid', async () => {
     const send = vi.spyOn(inngest, 'send').mockResolvedValue(undefined);
     const error = new Error('Could not retrieve token');
-    const getToken = vi.spyOn(usersConnector, 'getToken').mockRejectedValue(error);
+    const getToken = vi.spyOn(authConnector, 'getToken').mockRejectedValue(error);
 
     await expect(setupOrganisation(organisation.id, invalidCode)).rejects.toThrowError(error);
 
@@ -105,5 +117,5 @@ describe('setupOrganisation', () => {
     ).resolves.toHaveLength(0);
 
     expect(send).toBeCalledTimes(0);
-  }, 10000);
+  });
 });

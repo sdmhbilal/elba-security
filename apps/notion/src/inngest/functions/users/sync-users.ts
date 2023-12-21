@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { NonRetriableError } from 'inngest';
-import { type NotionUser, type ElbaUser, deleteUsers, getUsers, updateUsers } from '@/connectors/users';
+import { elbaAccess } from '@/connectors/elba';
+import { type NotionUser, type ElbaUser, getUsers } from '@/connectors/users';
 import { db } from '@/database/client';
 import { Organisation } from '@/database/schema';
 import { env } from '@/env';
@@ -23,11 +24,11 @@ export const syncUsers = inngest.createFunction(
   async ({ event, step }) => {
     const { organisationId, syncStartedAt, page } = event.data;
 
+    const elba = elbaAccess(organisationId);
+
     const {
-      ELBA_API_BASE_URL: integrationBaseUrl,
       NOTION_VERSION: notionVersion,
       NOTION_API_BASE_URL: sourceBaseUrl,
-      ELBA_SOURCE_ID: sourceId,
       USERS_SYNC_JOB_BATCH_SIZE: pageSize,
     } = env;
 
@@ -56,8 +57,7 @@ export const syncUsers = inngest.createFunction(
       const { next_cursor: nextPageCursor } = result;
 
       const users = result.results.filter((user) => user.object === 'user' && user.type === 'person').map(formatElbaUser);
-
-      await updateUsers(integrationBaseUrl, organisationId, sourceId, users);
+      await elba.users.update({ users });
 
       return nextPageCursor;
     });
@@ -76,7 +76,10 @@ export const syncUsers = inngest.createFunction(
       };
     }
 
-    await deleteUsers(integrationBaseUrl, organisationId, sourceId, syncStartedAt);
+    await elba.users.delete({
+      syncedBefore: syncStartedAt,
+    });
+
     return {
       status: 'completed',
     }

@@ -2,11 +2,9 @@ import { expect, test, describe, vi } from 'vitest';
 import { createInngestFunctionMock } from '@elba-security/test-utils';
 import { NonRetriableError } from 'inngest';
 import * as usersConnector from '@/connectors/users';
-import { deleteUsers } from '@/connectors/users';
 import { db } from '@/database/client';
 import { Organisation } from '@/database/schema';
 import { env } from '@/env';
-import { NotionError } from '@/connectors/commons/error';
 import { syncUsers } from './sync-users';
 
 const organisation = {
@@ -37,7 +35,7 @@ describe('sync-users', () => {
   test('should abort sync when organisation is not registered', async () => {
     const [result, { step }] = setup({
       organisationId: organisation.id,
-      isFirstSync: false,
+      isFirstSync: true,
       syncStartedAt,
       page: '0',
     });
@@ -45,7 +43,7 @@ describe('sync-users', () => {
     await expect(result).rejects.toBeInstanceOf(NonRetriableError);
 
     expect(step.sendEvent).toBeCalledTimes(0);
-  }, 100000);
+  });
 
   test('should continue the sync when there is a next page', async () => {
     await db.insert(Organisation).values(organisation);
@@ -56,7 +54,7 @@ describe('sync-users', () => {
 
     const [result, { step }] = setup({
       organisationId: organisation.id,
-      isFirstSync: false,
+      isFirstSync: true,
       syncStartedAt,
       page: '0',
     });
@@ -64,7 +62,16 @@ describe('sync-users', () => {
     await expect(result).resolves.toStrictEqual({ status: 'ongoing' });
 
     expect(step.sendEvent).toBeCalledTimes(1);
-  }, 100000);
+    expect(step.sendEvent).toBeCalledWith('synchronize-users', {
+      name: 'notion/users.sync.requested',
+      data: {
+        organisationId: organisation.id,
+        isFirstSync: true,
+        syncStartedAt,
+        page: nextCursorMoreUsers,
+      },
+    });
+  });
 
   test('should finalize the sync when there is a no next page', async () => {
     await db.insert(Organisation).values(organisation);
@@ -75,21 +82,13 @@ describe('sync-users', () => {
 
     const [result, { step }] = setup({
       organisationId: organisation.id,
-      isFirstSync: false,
+      isFirstSync: true,
       syncStartedAt,
-      page: '0',
+      page: nextCursorNoUsers,
     });
 
     await expect(result).resolves.toStrictEqual({ status: 'completed' });
 
     expect(step.sendEvent).toBeCalledTimes(0);
-  }, 100000);
-
-  test('should delete users from elba', async () => {
-    await expect(deleteUsers(env.ELBA_API_BASE_URL, organisation.id, env.ELBA_SOURCE_ID, syncStartedAt)).resolves.toBeUndefined();
-  }, 100000);
-
-  test('should not delete users from elba if some error occurr', async () => {
-    await expect(deleteUsers(env.ELBA_API_BASE_URL, organisation.id, 'wrong_sourceId', syncStartedAt)).rejects.toBeInstanceOf(NotionError)
-  }, 100000);
+  });
 });
