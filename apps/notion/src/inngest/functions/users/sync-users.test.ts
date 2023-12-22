@@ -13,7 +13,7 @@ const organisation = {
   workspaceId: '0b71731f-04a8-4d78-9be0-6b28b09ab4e4'
 };
 
-const syncStartedAt = new Date();
+const syncStartedAt = new Date().toISOString();
 
 const results = [
   {

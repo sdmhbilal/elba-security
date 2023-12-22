@@ -22,9 +22,9 @@ export type ElbaUser = {
 
 type GetUsersResponseData = { results: NotionUser[]; next_cursor: string | null };
 
-export const getUsers = async (token: string, pageSize: string, sourceBaseUrl: string, page: string | null, notionVersion: string) => {
+export const getUsers = async (token: string, page: string | null) => {
   const url = new URL(`${env.NOTION_API_BASE_URL}/v1/users`);
-  url.searchParams.append('page_size', pageSize)
+  url.searchParams.append('page_size', env.USERS_SYNC_JOB_BATCH_SIZE.toString());
   if (page) url.searchParams.append('start_cursor', page)
 
   const response = await fetch(url, {
@@ -32,7 +32,7 @@ export const getUsers = async (token: string, pageSize: string, sourceBaseUrl: s
     headers: {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
-      'Notion-Version': notionVersion
+      'Notion-Version': env.NOTION_VERSION
     }
   });
 

@@ -26,7 +26,7 @@ export const setupOrganisation = async (organisationId: string, code: string) =>
     data: {
       isFirstSync: true,
       organisationId,
-      syncStartedAt: new Date(),
+      syncStartedAt: new Date().toISOString(),
       page: null
     }
   });

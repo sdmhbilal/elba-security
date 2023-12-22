@@ -27,7 +27,9 @@ export const rateLimitMiddleware = new InngestMiddleware({
               ...context
             } = ctx;
             const retryAfter =
-              error instanceof NotionError && error.response?.status === 429 && error.response?.headers.get('Retry-After');
+              error instanceof NotionError
+                && error.response?.status === 429
+                  && error.response.headers.get('Retry-After');
 
             if (!retryAfter) {
               return;

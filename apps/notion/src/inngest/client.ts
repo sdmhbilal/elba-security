@@ -7,9 +7,12 @@ export const inngest = new Inngest({
       data: {
         isFirstSync: boolean;
         organisationId: string;
-        syncStartedAt: Date;
+        syncStartedAt: string;
         page: string | null;
       };
+    };
+    'request-organisations-users-sync': {
+      // No Params
     };
   }>()
 });

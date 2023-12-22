@@ -4,7 +4,6 @@ import { elbaAccess } from '@/connectors/elba';
 import { type NotionUser, type ElbaUser, getUsers } from '@/connectors/users';
 import { db } from '@/database/client';
 import { Organisation } from '@/database/schema';
-import { env } from '@/env';
 import { inngest } from '@/inngest/client';
 
 const formatElbaUser = (user: NotionUser): ElbaUser => ({
@@ -26,12 +25,6 @@ export const syncUsers = inngest.createFunction(
 
     const elba = elbaAccess(organisationId);
 
-    const {
-      NOTION_VERSION: notionVersion,
-      NOTION_API_BASE_URL: sourceBaseUrl,
-      USERS_SYNC_JOB_BATCH_SIZE: pageSize,
-    } = env;
-
     const token = await step.run('get-token', async () => {
       const [organisation] = await db
         .select({ token: Organisation.accessToken })
@@ -48,10 +41,7 @@ export const syncUsers = inngest.createFunction(
     const nextPage = await step.run('list-users', async () => {
       const result = await getUsers(
         token,
-        pageSize,
-        sourceBaseUrl,
         page,
-        notionVersion
       );
 
       const { next_cursor: nextPageCursor } = result;
@@ -76,8 +66,8 @@ export const syncUsers = inngest.createFunction(
       };
     }
 
-    await elba.users.delete({
-      syncedBefore: syncStartedAt,
+    const res = await elba.users.delete({
+      syncedBefore: syncStartedAt
     });
 
     return {

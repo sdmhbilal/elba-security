@@ -14,7 +14,7 @@ const invalidCode = 'invalid_code_abc';
 
 const token = env.NOTION_CLIENT_SECRET;
 const now = new Date();
-
+const syncStartedAt = new Date().toISOString();
 const organisation = {
   id: 'b91f113b-bcf9-4a28-98c7-5b13fb671c19',
   accessToken: token,
@@ -53,7 +53,7 @@ describe('setupOrganisation', () => {
     const [result, { step }] = setup({
       organisationId: organisation.id,
       isFirstSync: true,
-      syncStartedAt: new Date(),
+      syncStartedAt,
       page: null,
     });
 
@@ -83,7 +83,7 @@ describe('setupOrganisation', () => {
     const [result, { step }] = setup({
       organisationId: organisation.id,
       isFirstSync: true,
-      syncStartedAt: new Date(),
+      syncStartedAt,
       page: null,
     });
 

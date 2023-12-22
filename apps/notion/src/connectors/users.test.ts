@@ -15,8 +15,12 @@ const maxPage = 0;
 
 const users: NotionUser[] = Array.from({ length: 5 }, (_, i) => ({
   id: `id-${i}`,
-  username: `username-${i}`,
-  email: `user-${i}@foo.bar`,
+  name: `username-${i}`,
+  person: {
+    email: `user-${i}@foo.bar`,
+  },
+  type: 'user',
+  object: 'user',
 }));
 
 const nextCursorNoUsers = null;
@@ -25,7 +29,7 @@ describe('auth connector', () => {
   describe('getUsers', () => {
     beforeEach(() => {
       server.use(
-        http.get(`${env.NOTION_API_BASE_URL}/v1/users`, async ({ request }) => {
+        http.get(`${env.NOTION_API_BASE_URL}/v1/users`, ({ request }) => {
           if (request.headers.get('Authorization') !== `Bearer ${validToken}`) {
             return new Response(undefined, { status: 401 });
           }
@@ -41,21 +45,21 @@ describe('auth connector', () => {
     });
 
     test('should return users and nextPage when the token is valid and their is another page', async () => {
-      await expect(getUsers(validToken, '10', env.NOTION_API_BASE_URL, null, env.NOTION_VERSION)).resolves.toStrictEqual({
+      await expect(getUsers(validToken, '10')).resolves.toStrictEqual({
         users,
         nextPage: 'next_cursor',
       });
     });
 
     test('should return users and no nextPage when the token is valid and their is no other page', async () => {
-      await expect(getUsers(validToken, '0', env.NOTION_API_BASE_URL, null, env.NOTION_VERSION)).resolves.toStrictEqual({
+      await expect(getUsers(validToken, '0')).resolves.toStrictEqual({
         users,
         nextPage: nextCursorNoUsers,
       });
     });
 
     test('should throws when the token is invalid', async () => {
-      await expect(getUsers(invalidToken, '10', env.NOTION_API_BASE_URL, null, env.NOTION_VERSION)).rejects.toBeInstanceOf(NotionError);
+      await expect(getUsers(invalidToken, '10')).rejects.toBeInstanceOf(NotionError);
     });
   });
 });
