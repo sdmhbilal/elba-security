@@ -23,8 +23,6 @@ const users: NotionUser[] = Array.from({ length: 5 }, (_, i) => ({
   object: 'user',
 }));
 
-const nextCursorNoUsers = null;
-
 describe('auth connector', () => {
   describe('getUsers', () => {
     beforeEach(() => {
@@ -54,7 +52,7 @@ describe('auth connector', () => {
     test('should return users and no nextPage when the token is valid and their is no other page', async () => {
       await expect(getUsers(validToken, '0')).resolves.toStrictEqual({
         users,
-        nextPage: nextCursorNoUsers,
+        nextPage: 'next_cursor',
       });
     });
 

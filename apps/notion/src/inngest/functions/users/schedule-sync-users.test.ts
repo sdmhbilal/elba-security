@@ -33,7 +33,7 @@ describe('schedule-sync-users', () => {
       data: {
         organisationId: organisation.id,
         isFirstSync: false,
-        syncStartedAt: new Date(),
+        syncStartedAt: new Date().toISOString(),
         page: null,
       },
     }]);

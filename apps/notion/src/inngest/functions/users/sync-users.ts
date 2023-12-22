@@ -66,7 +66,7 @@ export const syncUsers = inngest.createFunction(
       };
     }
 
-    const res = await elba.users.delete({
+    await elba.users.delete({
       syncedBefore: syncStartedAt
     });
 
